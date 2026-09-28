@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "hermes_pbx_bridge",
+  "project_id": "c2a48b4f-a06d-4978-bc5a-ec30a43e5978"
+}
