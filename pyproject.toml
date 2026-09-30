@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hermes-pbx-bridge"
+version = "0.1.0"
+description = "Least-privilege Asterisk AudioSocket bridge for Hermes Agent"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+hermes-pbx-bridge = "hermes_pbx_bridge.app:main"
+
+[tool.setuptools.packages.find]
+include = ["hermes_pbx_bridge*"]

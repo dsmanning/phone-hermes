@@ -1,0 +1,33 @@
+[Unit]
+Description=Hermes PBX AudioSocket bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hermes-pbx
+Group=hermes-pbx
+EnvironmentFile=/etc/hermes-pbx-bridge.env
+WorkingDirectory=/opt/hermes-pbx-bridge/app
+ExecStart=/usr/bin/python3 -m hermes_pbx_bridge.app
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

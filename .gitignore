@@ -1,3 +1,18 @@
+# Python build/runtime artifacts
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+.venv/
+
+# Runtime diagnostics and local deployment state
+diagnostics/
+.pbx-bead-id
+create-connection-workflow-bead.sh
+calliope-speech-admin
+install-calliope-speech-admin.sh
+.beads/connection-workflow-issue.json
 
 # Beads / Dolt files (added by bd init)
 .dolt/
