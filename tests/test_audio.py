@@ -5,10 +5,18 @@ import sys
 import unittest
 import wave
 
-from hermes_pbx_bridge.audio import pcm16le_to_wav, wav_to_pcm16le_8khz
+from hermes_pbx_bridge.audio import pcm16le_to_wav, tone_pcm16le, wav_to_pcm16le_8khz
 
 
 class AudioConversionTests(unittest.TestCase):
+    def test_generates_bounded_command_end_tone(self):
+        tone = tone_pcm16le(frequency_hz=1000, duration_ms=150, sample_rate=8000)
+
+        self.assertEqual(len(tone), 2400)
+        samples = struct.unpack("<" + "h" * 1200, tone)
+        self.assertTrue(any(samples))
+        self.assertLessEqual(max(abs(sample) for sample in samples), 8000)
+
     def test_imports_when_removed_audioop_module_is_unavailable(self):
         program = """
 import importlib.abc

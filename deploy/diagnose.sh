@@ -5,7 +5,8 @@ if [[ $(id -u) -ne 0 ]]; then
   exec sudo -- "$0" "$@"
 fi
 
-OUTPUT=/media/athena/chiron/hermes-output/hermes-pbx-bridge/diagnostics/latest.txt
+SOURCE_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+OUTPUT=${OUTPUT:-"$SOURCE_ROOT/diagnostics/latest.txt"}
 ENV_FILE=/etc/hermes-pbx-bridge.env
 mkdir -p "$(dirname "$OUTPUT")"
 
@@ -70,7 +71,7 @@ for port in (10200, 10300):
         print(f"calliope.local:{port} probe failed: {type(exc).__name__}: {exc}")
 PY
   printf '\n=== Direct Wyoming transaction probes ===\n'
-  PYTHONPATH=/media/athena/chiron/hermes-output/hermes-pbx-bridge python3 - <<'PY'
+  PYTHONPATH="$SOURCE_ROOT" python3 - <<'PY'
 import time
 from hermes_pbx_bridge.audio import pcm16le_to_wav
 from hermes_pbx_bridge.wyoming import (

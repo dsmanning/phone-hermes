@@ -8,6 +8,7 @@ from hermes_pbx_bridge.adapters import (
     AdapterError,
     HermesResponsesAdapter,
     HermesSpeechToTextAdapter,
+    HomeAssistantConversationAdapter,
     HttpResponse,
     SpeechToTextAdapter,
     TextToSpeechAdapter,
@@ -28,6 +29,11 @@ class RecordingTransport:
 class TimeoutTransport:
     def request(self, request, timeout):
         raise TimeoutError("upstream timed out with token secret")
+
+
+class ConnectionErrorTransport:
+    def request(self, request, timeout):
+        raise OSError("network details must not leak")
 
 
 class FakeUrlResponse:
@@ -117,6 +123,70 @@ class HermesResponsesAdapterTests(unittest.TestCase):
 
         self.assertEqual(str(raised.exception), "Hermes request timed out")
         self.assertNotIn("secret", str(raised.exception))
+
+
+class HomeAssistantConversationAdapterTests(unittest.TestCase):
+    def test_connection_failure_becomes_sanitized_adapter_error(self):
+        adapter = HomeAssistantConversationAdapter(
+            "http://172.30.55.1/api/conversation/process",
+            "homeassistant.agent.lan",
+            ConnectionErrorTransport(),
+            timeout=8,
+        )
+
+        with self.assertRaises(AdapterError) as raised:
+            adapter.respond("turn on the kitchen lights")
+
+        self.assertEqual(str(raised.exception), "Home Assistant request failed")
+        self.assertNotIn("network details", str(raised.exception))
+
+    def test_returns_spoken_result_for_handled_command(self):
+        body = {
+            "response": {
+                "speech": {"plain": {"speech": "Turned on the kitchen lights."}},
+                "response_type": "action_done",
+                "data": {"success": [{"id": "light.kitchen"}], "failed": []},
+            }
+        }
+        transport = RecordingTransport(
+            HttpResponse(200, {"content-type": "application/json"}, json.dumps(body).encode())
+        )
+        adapter = HomeAssistantConversationAdapter(
+            "http://172.30.55.1/api/conversation/process",
+            "homeassistant.agent.lan",
+            transport,
+            timeout=8,
+        )
+
+        result = adapter.respond("turn on the kitchen lights")
+
+        request, timeout = transport.requests[0]
+        self.assertEqual(
+            json.loads(request.data),
+            {"text": "turn on the kitchen lights", "language": "en"},
+        )
+        self.assertEqual(request.headers["Host"], "homeassistant.agent.lan")
+        self.assertEqual(timeout, 8)
+        self.assertEqual(result, "Turned on the kitchen lights.")
+
+    def test_returns_none_when_home_assistant_does_not_recognize_intent(self):
+        body = {
+            "response": {
+                "speech": {"plain": {"speech": "Sorry, I couldn't understand that."}},
+                "response_type": "error",
+                "data": {"code": "no_intent_match"},
+            }
+        }
+        adapter = HomeAssistantConversationAdapter(
+            "http://172.30.55.1/api/conversation/process",
+            "homeassistant.agent.lan",
+            RecordingTransport(
+                HttpResponse(200, {"content-type": "application/json"}, json.dumps(body).encode())
+            ),
+            timeout=8,
+        )
+
+        self.assertIsNone(adapter.respond("write an email"))
 
 
 class HermesSpeechToTextAdapterTests(unittest.TestCase):

@@ -1,6 +1,9 @@
 from collections.abc import Callable, Iterable
+import logging
 import socket
 import socketserver
+import threading
+import time
 from typing import Protocol
 from uuid import UUID
 
@@ -10,8 +13,20 @@ from .sessions import CallSession, SessionRegistry
 from .turns import TurnDetector
 
 
+logger = logging.getLogger(__name__)
+
+
 class Processor(Protocol):
-    def process_turn(self, session: CallSession, pcm: bytes) -> bytes: ...
+    def begin_call(self, session: CallSession) -> bytes: ...
+
+    def end_of_command(self) -> bytes: ...
+
+    def process_turn(
+        self,
+        session: CallSession,
+        pcm: bytes,
+        progress: Callable[[bytes], None] | None = None,
+    ) -> bytes: ...
 
 
 class _AudioSocketHandler(socketserver.BaseRequestHandler):
@@ -19,6 +34,8 @@ class _AudioSocketHandler(socketserver.BaseRequestHandler):
 
     def handle(self) -> None:
         call_id: UUID | None = None
+        self._send_lock = threading.Lock()
+        processing = threading.Event()
         try:
             self.server.guard.authorize_source(self.client_address[0])
             first = self._read_frame()
@@ -27,6 +44,10 @@ class _AudioSocketHandler(socketserver.BaseRequestHandler):
             call_id = self.server.guard.parse_call_uuid(first.payload)
             session = self.server.sessions.open(call_id)
             detector = self.server.detector_factory()
+            logger.info("AudioSocket call accepted")
+            opening = self.server.processor.begin_call(session)
+            self._send_audio(opening)
+            logger.info("AudioSocket opening prompt sent pcm_bytes=%d", len(opening))
 
             while True:
                 frame = self._read_frame()
@@ -34,22 +55,58 @@ class _AudioSocketHandler(socketserver.BaseRequestHandler):
                     return
                 if frame.kind != 0x10:
                     continue
+                if processing.is_set():
+                    continue
                 turn = detector.feed(frame.payload)
                 if turn is None:
                     continue
-                reply = self.server.processor.process_turn(session, turn)
-                for offset in range(0, len(reply), 320):
-                    self.request.sendall(encode_frame(Frame(0x10, reply[offset : offset + 320])))
+                logger.info("AudioSocket turn detected pcm_bytes=%d", len(turn))
+                tone = self.server.processor.end_of_command()
+                self._send_audio(tone)
+                logger.info("AudioSocket command-end tone sent pcm_bytes=%d", len(tone))
+                processing.set()
+                threading.Thread(
+                    target=self._process_turn,
+                    args=(session, turn, processing),
+                    daemon=True,
+                ).start()
         except (ConnectionError, EOFError, PermissionError, ValueError):
             return
         finally:
             if call_id is not None:
                 self.server.sessions.close(call_id)
+                logger.info("AudioSocket call closed")
 
     def _read_frame(self) -> Frame:
         header = self._read_exact(3)
         length = int.from_bytes(header[1:3], "big")
         return Frame(header[0], self._read_exact(length))
+
+    def _send_audio(self, pcm: bytes) -> None:
+        with self._send_lock:
+            for offset in range(0, len(pcm), 320):
+                if offset:
+                    self.server.sleeper(0.02)
+                self.request.sendall(encode_frame(Frame(0x10, pcm[offset : offset + 320])))
+
+    def _process_turn(
+        self,
+        session: CallSession,
+        turn: bytes,
+        processing: threading.Event,
+    ) -> None:
+        try:
+            reply = self.server.processor.process_turn(session, turn, self._send_progress)
+            self._send_audio(reply)
+            logger.info("AudioSocket reply sent pcm_bytes=%d", len(reply))
+        except Exception as exc:
+            logger.error("AudioSocket turn failed error=%s", type(exc).__name__)
+        finally:
+            processing.clear()
+
+    def _send_progress(self, pcm: bytes) -> None:
+        self._send_audio(pcm)
+        logger.info("AudioSocket progress sent pcm_bytes=%d", len(pcm))
 
     def _read_exact(self, length: int) -> bytes:
         chunks = bytearray()
@@ -73,9 +130,11 @@ class AudioSocketServer(socketserver.ThreadingTCPServer):
         allowed_sources: Iterable[str],
         processor: Processor,
         detector_factory: Callable[[], TurnDetector],
+        sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
         self.guard = ConnectionGuard(allowed_sources)
         self.processor = processor
         self.detector_factory = detector_factory
+        self.sleeper = sleeper
         self.sessions = SessionRegistry()
         super().__init__(server_address, _AudioSocketHandler)

@@ -1,6 +1,7 @@
 import socket
 import unittest
 
+from hermes_pbx_bridge.adapters import HomeAssistantConversationAdapter
 from hermes_pbx_bridge.app import build_server
 from hermes_pbx_bridge.config import Config
 from hermes_pbx_bridge.wyoming import WyomingSpeechToTextAdapter, WyomingTextToSpeechAdapter
@@ -28,6 +29,7 @@ class ApplicationTests(unittest.TestCase):
             self.assertGreater(server.server_address[1], 0)
             self.assertIsInstance(server.processor._stt, WyomingSpeechToTextAdapter)
             self.assertIsInstance(server.processor._tts, WyomingTextToSpeechAdapter)
+            self.assertIsInstance(server.processor._home, HomeAssistantConversationAdapter)
         finally:
             server.server_close()
 

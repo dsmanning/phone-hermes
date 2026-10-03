@@ -13,6 +13,8 @@ class Config:
     wyoming_stt_port: int = 10300
     wyoming_tts_host: str = "calliope.local"
     wyoming_tts_port: int = 10200
+    home_assistant_api_base_url: str = "http://172.30.55.1"
+    home_assistant_host: str = "homeassistant.agent.lan"
 
     @property
     def bind_address(self) -> tuple[str, int]:
@@ -29,6 +31,10 @@ class Config:
     @property
     def responses_url(self) -> str:
         return f"{self.api_base_url}/v1/responses"
+
+    @property
+    def home_assistant_conversation_url(self) -> str:
+        return f"{self.home_assistant_api_base_url}/api/conversation/process"
 
     @property
     def transcribe_url(self) -> str:
@@ -60,4 +66,10 @@ class Config:
             wyoming_stt_port=int(environment.get("WYOMING_STT_PORT", "10300")),
             wyoming_tts_host=environment.get("WYOMING_TTS_HOST", "calliope.local"),
             wyoming_tts_port=int(environment.get("WYOMING_TTS_PORT", "10200")),
+            home_assistant_api_base_url=environment.get(
+                "HOME_ASSISTANT_API_BASE_URL", "http://172.30.55.1"
+            ).rstrip("/"),
+            home_assistant_host=environment.get(
+                "HOME_ASSISTANT_HOST", "homeassistant.agent.lan"
+            ),
         )

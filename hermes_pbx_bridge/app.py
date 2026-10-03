@@ -1,7 +1,12 @@
 import logging
 import os
 
-from .adapters import HermesResponsesAdapter, Transport, UrllibTransport
+from .adapters import (
+    HermesResponsesAdapter,
+    HomeAssistantConversationAdapter,
+    Transport,
+    UrllibTransport,
+)
 from .config import Config
 from .pipeline import CallProcessor
 from .server import AudioSocketServer
@@ -19,7 +24,13 @@ def build_server(config: Config, *, transport: Transport) -> AudioSocketServer:
     tts = WyomingTextToSpeechAdapter(
         lambda: SocketEventClient(*config.wyoming_tts_address, 60)
     )
-    processor = CallProcessor(stt, agent, tts)
+    home = HomeAssistantConversationAdapter(
+        config.home_assistant_conversation_url,
+        config.home_assistant_host,
+        transport,
+        timeout=8,
+    )
+    processor = CallProcessor(stt, agent, tts, home=home)
     return AudioSocketServer(
         config.bind_address,
         allowed_sources=config.allowed_sources,

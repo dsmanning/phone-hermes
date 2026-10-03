@@ -44,6 +44,49 @@ class AgentReply:
     response_id: str
 
 
+class HomeAssistantConversationAdapter:
+    def __init__(
+        self,
+        endpoint: str,
+        host_header: str,
+        transport: Transport,
+        *,
+        timeout: float,
+    ) -> None:
+        self._endpoint = endpoint
+        self._host_header = host_header
+        self._transport = transport
+        self._timeout = timeout
+
+    def respond(self, text: str) -> str | None:
+        request = Request(
+            self._endpoint,
+            data=json.dumps({"text": text, "language": "en"}).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "Host": self._host_header,
+            },
+            method="POST",
+        )
+        try:
+            response = self._transport.request(request, self._timeout)
+        except TimeoutError as exc:
+            raise AdapterError("Home Assistant request timed out") from exc
+        except OSError as exc:
+            raise AdapterError("Home Assistant request failed") from exc
+        if not 200 <= response.status < 300:
+            raise AdapterError(f"Home Assistant request failed with HTTP {response.status}")
+        try:
+            result = json.loads(response.body)["response"]
+            data = result.get("data") or {}
+            if result.get("response_type") == "error" and data.get("code") == "no_intent_match":
+                return None
+            speech = result["speech"]["plain"]["speech"]
+        except (KeyError, TypeError, ValueError) as exc:
+            raise AdapterError("Home Assistant returned an invalid response") from exc
+        return str(speech).strip() or None
+
+
 class HermesSpeechToTextAdapter:
     def __init__(
         self,

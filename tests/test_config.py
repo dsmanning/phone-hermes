@@ -27,6 +27,11 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.api_key, "top-secret")
         self.assertEqual(config.wyoming_stt_address, ("calliope.local", 10300))
         self.assertEqual(config.wyoming_tts_address, ("calliope.local", 10200))
+        self.assertEqual(
+            config.home_assistant_conversation_url,
+            "http://172.30.55.1/api/conversation/process",
+        )
+        self.assertEqual(config.home_assistant_host, "homeassistant.agent.lan")
 
 
 if __name__ == "__main__":

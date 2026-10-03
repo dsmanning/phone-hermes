@@ -82,6 +82,8 @@ trap 'rm -f "$ENV_TMP"' EXIT
   printf 'WYOMING_STT_PORT=10300\n'
   printf 'WYOMING_TTS_HOST=calliope.local\n'
   printf 'WYOMING_TTS_PORT=10200\n'
+  printf 'HOME_ASSISTANT_API_BASE_URL=http://172.30.55.1\n'
+  printf 'HOME_ASSISTANT_HOST=homeassistant.agent.lan\n'
 } >"$ENV_TMP"
 install -o root -g hermes-pbx -m 0640 "$ENV_TMP" "$SERVICE_ENV"
 install -o root -g root -m 0644 "$SOURCE_ROOT/deploy/hermes-pbx-bridge.service" "$SERVICE_UNIT"
