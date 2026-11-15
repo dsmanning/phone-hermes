@@ -33,12 +33,12 @@ Each call has independent Hermes conversation state through `previous_response_i
 ```text
 PBX_BRIDGE_BIND=0.0.0.0
 PBX_BRIDGE_PORT=8443
-PBX_BRIDGE_ALLOWED_SOURCES=10.1.30.20
+PBX_BRIDGE_ALLOWED_SOURCES=<pbx-ipv4-address>
 HERMES_API_BASE_URL=http://127.0.0.1:8642
-HERMES_API_KEY=...
-WYOMING_STT_HOST=calliope.local
+HERMES_API_KEY=<hermes-api-key>
+WYOMING_STT_HOST=<speech-to-text-host>
 WYOMING_STT_PORT=10300
-WYOMING_TTS_HOST=calliope.local
+WYOMING_TTS_HOST=<text-to-speech-host>
 WYOMING_TTS_PORT=10200
 ```
 
@@ -64,40 +64,11 @@ The suite covers AudioSocket framing, source and UUID validation, call-session i
 
 ## Deployment
 
-The deployment script:
-
-1. Runs the complete test suite.
-2. Installs the package under `/opt/hermes-pbx-bridge/app`.
-3. Creates the dedicated `hermes-pbx` service account if needed.
-4. Reads `API_SERVER_KEY` from the Hermes environment file.
-5. Writes a root-owned service environment file.
-6. Installs and restarts the hardened systemd unit.
-7. Verifies the service and IPv4 TCP/8443 listener.
-
-```bash
-sudo deploy/install.sh
-```
-
-Defaults can be overridden when needed:
-
-```bash
-sudo PBX_SOURCE=10.1.30.20 \
-  HERMES_API_BASE_URL=http://127.0.0.1:8642 \
-  HERMES_ENV=/home/dsm/.hermes/.env \
-  deploy/install.sh
-```
+The deployment and diagnostics scripts were removed from this repository pending sanitization. The systemd unit remains under `deploy/`; adapt it and supply your own deployment configuration before use. Do not commit populated environment files or credentials.
 
 ## Diagnostics
 
-`deploy/diagnose.sh` writes a sanitized report to `diagnostics/latest.txt`. Runtime diagnostics are excluded from Git because they contain host-specific topology and service details.
-
-```bash
-sudo deploy/diagnose.sh
-```
-
-The report checks the bridge service and listener, Hermes API reachability, Wyoming discovery, and complete STT/TTS transactions.
-
-`deploy/trace_wyoming_tts.py` is a bounded event-level Wyoming TTS tracer for diagnosing framing or payload-transfer failures.
+`deploy/trace_wyoming_tts.py` is a bounded event-level Wyoming TTS tracer for diagnosing framing or payload-transfer failures. Runtime diagnostics should be kept out of Git because they can contain host-specific topology and service details.
 
 ## Network troubleshooting
 
