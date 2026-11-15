@@ -11,6 +11,8 @@ dependencies = []
 
 [project.scripts]
 hermes-pbx-bridge = "hermes_pbx_bridge.app:main"
+hermes-service-health = "hermes_pbx_bridge.healthcheck:main"
+hermes-wyoming-speech = "hermes_pbx_bridge.speech_cli:main"
 
 [tool.setuptools.packages.find]
 include = ["hermes_pbx_bridge*"]

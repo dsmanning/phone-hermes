@@ -1,0 +1,19 @@
+{
+  "name": "default-image-review",
+  "version": "0.1.0",
+  "description": "Independent pixel review using the active profile's explicit default model and host authentication",
+  "kind": "standalone",
+  "requires_hermes": ">=0.22.5",
+  "provides_tools": ["default_image_review"],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "image_roots": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Narrow absolute host directories containing reviewable JPEG/PNG images; empty denies all reads"
+      }
+    },
+    "additionalProperties": false
+  }
+}

@@ -3,7 +3,6 @@ import os
 
 from .adapters import (
     HermesResponsesAdapter,
-    HomeAssistantConversationAdapter,
     Transport,
     UrllibTransport,
 )
@@ -24,13 +23,7 @@ def build_server(config: Config, *, transport: Transport) -> AudioSocketServer:
     tts = WyomingTextToSpeechAdapter(
         lambda: SocketEventClient(*config.wyoming_tts_address, 60)
     )
-    home = HomeAssistantConversationAdapter(
-        config.home_assistant_conversation_url,
-        config.home_assistant_host,
-        transport,
-        timeout=8,
-    )
-    processor = CallProcessor(stt, agent, tts, home=home)
+    processor = CallProcessor(stt, agent, tts)
     return AudioSocketServer(
         config.bind_address,
         allowed_sources=config.allowed_sources,

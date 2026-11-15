@@ -37,6 +37,34 @@ def read_event(reader: BinaryIO) -> Event:
     return Event(header["type"], data, payload)
 
 
+def create_http_connect_connection(
+    address: tuple[str, int],
+    timeout: float,
+    *,
+    proxy_address: tuple[str, int],
+    connector: Callable = socket.create_connection,
+):
+    host, port = address
+    sock = connector(proxy_address, timeout)
+    request = (
+        f"CONNECT {host}:{port} HTTP/1.1\r\n"
+        f"Host: {host}:{port}\r\n\r\n"
+    ).encode("ascii")
+    sock.sendall(request)
+    response = bytearray()
+    while not response.endswith(b"\r\n\r\n"):
+        chunk = sock.recv(1)
+        if not chunk:
+            sock.close()
+            raise ConnectionError("HTTP proxy closed before CONNECT response")
+        response.extend(chunk)
+    status_line = bytes(response).split(b"\r\n", 1)[0]
+    if not status_line.startswith(b"HTTP/") or b" 200 " not in status_line:
+        sock.close()
+        raise ConnectionError("HTTP proxy rejected CONNECT request")
+    return sock
+
+
 class SocketEventClient:
     def __init__(
         self,

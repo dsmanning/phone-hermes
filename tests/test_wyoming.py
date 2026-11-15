@@ -9,12 +9,52 @@ from hermes_pbx_bridge.wyoming import (
     SocketEventClient,
     WyomingSpeechToTextAdapter,
     WyomingTextToSpeechAdapter,
+    create_http_connect_connection,
     encode_event,
     read_event,
 )
 
 
 class WyomingProtocolTests(unittest.TestCase):
+    def test_http_connect_connector_opens_tunnel_without_resolving_target(self):
+        class FakeSocket:
+            def __init__(self):
+                self.sent = bytearray()
+                self.response = io.BytesIO(
+                    b"HTTP/1.1 200 Connection established\r\nProxy-Agent: test\r\n\r\n"
+                )
+
+            def sendall(self, data):
+                self.sent.extend(data)
+
+            def recv(self, length):
+                return self.response.read(length)
+
+            def close(self):
+                pass
+
+        sock = FakeSocket()
+        calls = []
+
+        def connector(address, timeout):
+            calls.append((address, timeout))
+            return sock
+
+        actual = create_http_connect_connection(
+            ("piper.agent.lan", 10200),
+            8,
+            proxy_address=("egress-proxy", 3128),
+            connector=connector,
+        )
+
+        self.assertIs(actual, sock)
+        self.assertEqual(calls, [(('egress-proxy', 3128), 8)])
+        self.assertEqual(
+            bytes(sock.sent),
+            b"CONNECT piper.agent.lan:10200 HTTP/1.1\r\n"
+            b"Host: piper.agent.lan:10200\r\n\r\n",
+        )
+
     def test_round_trips_json_data_and_binary_payload(self):
         original = Event(
             "audio-chunk",
